@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Mazda Diesel DTC</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: шапка со значком группы, под ней «сканер» — одно крупное поле кода; ответ раскрывается сразу под полем, каталог кодов ниже. */
+:root{
+  --bg:#eef0f2; --surface:#ffffff; --sunken:#e3e6ea; --line:#cfd4da;
+  --ink:#16191d; --muted:#5b636d; --steel:#8a929c;
+  --red:#c2161d; --red-ink:#ffffff; --red-soft:#fbe9ea;
+  --ok:#1f7a4d; --warn:#9a5b00; --warn-soft:#fff3dc;
+  --screen:#14171b; --screen-ink:#f3f5f7; --screen-dim:#7d8792;
+  --f-display:"Exo 2","Arial Narrow",Arial,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101215; --surface:#1a1d21; --sunken:#23272c; --line:#343a41;
+  --ink:#eceff2; --muted:#a2abb5; --steel:#77808a;
+  --red:#e5383f; --red-ink:#ffffff; --red-soft:#3a1719;
+  --ok:#4cc38a; --warn:#f0b354; --warn-soft:#3a2c12;
+  --screen:#07090b; --screen-ink:#f3f5f7; --screen-dim:#7d8792;
+  color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#101215; --surface:#1a1d21; --sunken:#23272c; --line:#343a41;
+  --ink:#eceff2; --muted:#a2abb5; --steel:#77808a;
+  --red:#e5383f; --red-ink:#ffffff; --red-soft:#3a1719;
+  --ok:#4cc38a; --warn:#f0b354; --warn-soft:#3a2c12;
+  --screen:#07090b; --screen-ink:#f3f5f7; --screen-dim:#7d8792;
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+html{padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:20px}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+
+/* шапка */
+.head{display:flex;align-items:center;gap:14px}
+.badge{flex:none;width:88px;height:auto;background:#fff;border-radius:12px;padding:5px;border:1px solid var(--line)}
+.head h1{font-family:var(--f-display);font-weight:800;font-size:1.65rem;line-height:1.05;margin:0;letter-spacing:.02em;text-transform:uppercase}
+.head h1 span{color:var(--red)}
+.head p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+.head .grow{flex:1;min-width:0}
+
+/* сканер */
+.scan{background:var(--screen);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;border-bottom:4px solid var(--red)}
+.scan label{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--screen-dim)}
+.scan-row{display:flex;gap:10px;align-items:stretch}
+#q{flex:1;min-width:0;background:transparent;border:0;border-bottom:2px solid var(--screen-dim);color:var(--screen-ink);font-family:var(--f-mono);font-weight:700;font-size:clamp(1.7rem,7vw,2.6rem);letter-spacing:.08em;padding:4px 2px;text-transform:uppercase;border-radius:0}
+#q::placeholder{color:var(--screen-dim);opacity:.55}
+#q:focus{outline:none;border-bottom-color:var(--red)}
+#clear{flex:none;background:transparent;border:1px solid var(--screen-dim);color:var(--screen-ink);border-radius:8px;padding:0 14px;cursor:pointer;font-size:.9rem}
+.scan small{color:var(--screen-dim);font-size:.82rem}
+
+/* ответ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card-top{padding:18px 18px 14px;display:flex;flex-direction:column;gap:8px}
+.code-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.code{font-family:var(--f-mono);font-weight:700;font-size:1.9rem;line-height:1;letter-spacing:.04em}
+.code i{font-style:normal;color:var(--steel);font-size:1.1rem}
+.tag{font-size:.78rem;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--sunken);color:var(--muted);white-space:nowrap}
+.tag.eng{background:var(--ink);color:var(--surface)}
+.tag.mine{background:var(--warn-soft);color:var(--warn)}
+.card h2{font-family:var(--f-display);font-weight:700;font-size:1.3rem;line-height:1.2;margin:0;text-wrap:balance}
+.fix{background:var(--red-soft);border-left:4px solid var(--red);padding:12px 18px;font-weight:500}
+.fix b{display:block;font-family:var(--f-display);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:2px}
+.sec{padding:14px 18px;border-top:1px solid var(--line)}
+.sec h3{font-family:var(--f-display);font-weight:700;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.sec p{margin:0;max-width:68ch}
+.sec ul,.sec ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.sec ol{list-style:none;padding-left:0;counter-reset:s}
+.sec ol li{counter-increment:s;display:grid;grid-template-columns:2em 1fr;gap:6px}
+.sec ol li::before{content:counter(s);font-family:var(--f-mono);font-weight:700;color:var(--red)}
+.sec ol li > span{min-width:0}
+.pre{color:var(--muted);font-size:.93rem;margin-bottom:10px !important}
+.note{background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:10px 12px;font-size:.93rem}
+.note b{color:var(--warn)}
+.src{color:var(--steel);font-size:.82rem;overflow-wrap:anywhere}
+.variants{display:flex;flex-wrap:wrap;gap:8px}
+.variants button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:600;font-size:.9rem}
+.variants button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:.92rem}
+.btn.primary{background:var(--red);border-color:var(--red);color:var(--red-ink)}
+.btn.danger{color:var(--red);border-color:var(--red)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.empty p{margin:0}
+
+/* каталог */
+.cat-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 16px}
+.cat-head h2{font-family:var(--f-display);font-weight:700;font-size:1.15rem;margin:0;text-transform:uppercase;letter-spacing:.06em}
+.cat-head span{color:var(--muted);font-size:.9rem}
+.group{display:flex;flex-direction:column;gap:8px}
+.group h3{font-family:var(--f-display);font-weight:600;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
+.rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.row{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;cursor:pointer;min-width:0}
+.row:hover{border-color:var(--red)}
+.row b{font-family:var(--f-mono);font-weight:700;font-size:1rem;grid-row:span 2;align-self:start}
+.row span{font-size:.9rem;line-height:1.3;min-width:0;overflow-wrap:anywhere}
+.row em{font-style:normal;font-size:.76rem;color:var(--steel)}
+
+/* форма */
+.form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.form h2{font-family:var(--f-display);font-weight:700;font-size:1.2rem;margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}.head h1{font-size:1.35rem}.badge{width:68px}}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld label{font-weight:600;font-size:.9rem}
+.fld small{color:var(--muted);font-size:.82rem}
+.fld input,.fld textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+.fld textarea{min-height:92px;resize:vertical;line-height:1.4}
+#f-code{font-family:var(--f-mono);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.err{color:var(--red);font-weight:600;font-size:.9rem;margin:0}
+.where{font-size:.86rem;color:var(--muted);margin:0}
+.foot{color:var(--steel);font-size:.82rem;border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:6px}
+.foot p{margin:0;max-width:75ch}
+@media (prefers-reduced-motion:no-preference){.card,.empty{animation:in .18s ease-out}@keyframes in{from{transform:translateY(4px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="head">
+    <img class="badge" alt="Значок группы Mazda Diesel" src="data:image/webp;base64,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">
+    <div class="grow">
+      <h1>Mazda <span>Diesel</span> · коды ошибок</h1>
+      <p>SKYACTIV-D 1.5 и 1.8. Введите код со сканера и получите причины и порядок ремонта.</p>
+    </div>
+  </header>
+
+  <section class="scan" aria-label="Поиск по коду">
+    <label for="q">Код ошибки</label>
+    <div class="scan-row">
+      <input id="q" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="P2106" maxlength="40" aria-describedby="q-hint">
+      <button id="clear" type="button" hidden>Сбросить</button>
+    </div>
+    <small id="q-hint">Можно без «:00» и русскими буквами. Ищет и по словам: «турбина», «сажевый», «масло».</small>
+  </section>
+
+  <div id="result" aria-live="polite"></div>
+
+  <section id="formbox" class="form" hidden>
+    <h2 id="form-title">Новый код</h2>
+    <form id="form" novalidate>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="grid2">
+          <div class="fld"><label for="f-code">Код</label><input id="f-code" type="text" maxlength="10" placeholder="P0420" autocomplete="off" spellcheck="false"><small>Буква P, B, C или U и четыре знака. Подкод по желанию: P0420:00.</small></div>
+          <div class="fld"><label for="f-eng">Двигатель или блок</label><input id="f-eng" type="text" maxlength="40" list="eng-list" placeholder="SKYACTIV-D 1.8"><datalist id="eng-list"><option value="SKYACTIV-D 1.5"><option value="SKYACTIV-D 1.8"><option value="SKYACTIV-D 2.2"><option value="АКПП"><option value="DSC"><option value="BCM"></datalist></div>
+        </div>
+        <div class="fld"><label for="f-title">Что означает код</label><input id="f-title" type="text" maxlength="160" placeholder="Например: низкая эффективность нейтрализатора"></div>
+        <div class="fld"><label for="f-fix">Решение коротко</label><textarea id="f-fix" maxlength="600" placeholder="Что помогло или с чего начать"></textarea></div>
+        <div class="grid2">
+          <div class="fld"><label for="f-causes">Возможные причины</label><textarea id="f-causes" maxlength="3000" placeholder="Каждая причина с новой строки"></textarea></div>
+          <div class="fld"><label for="f-steps">Порядок действий</label><textarea id="f-steps" maxlength="5000" placeholder="Каждый шаг с новой строки"></textarea></div>
+        </div>
+        <div class="fld"><label for="f-note">Заметка</label><input id="f-note" type="text" maxlength="400" placeholder="Модель, год, пробег, номер детали"></div>
+        <p class="err" id="f-err" hidden></p>
+        <p class="where" id="f-where"></p>
+        <div class="acts">
+          <button class="btn primary" type="submit" id="f-save">Сохранить</button>
+          <button class="btn" type="button" id="f-cancel">Отмена</button>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <section id="catalog" aria-label="Все коды">
+    <div class="cat-head">
+      <h2>Все коды</h2>
+      <span id="count"></span>
+      <button class="btn" type="button" id="add">Добавить свой код</button>
+    </div>
+    <div id="groups"></div>
+  </section>
+
+  <footer class="foot">
+    <p>Неофициальный справочник сообщества. Не является продуктом Mazda Motor Corporation и не связан с ней.</p>
+    <p>Карточки составлены как краткий пересказ сервисных инструкций из группы. Перед ремонтом сверяйте порядок действий и номера выводов с исходным PDF: имя файла указано внизу каждой карточки.</p>
+  </footer>
+</div>
+
+<script>
+/* База кодов: краткий пересказ сервисных инструкций из группы. e — двигатель/блок, y — система. */
+const E18 = "SKYACTIV-D 1.8", E15 = "SKYACTIV-D 1.5";
+const DATA = [
+{c:"P009E",s:"00",e:E15,y:"Топливная система",src:"DTC P009E-00 SKYACTIV-D 1.5.pdf",
+ t:"Клапан сброса давления топлива заклинил в закрытом положении",
+ q:"Проверьте клапан сброса давления топлива (в рампе), затем клапан управления всасыванием на ТНВД.",
+ d:"Во время работы клапана сброса давление в рампе несколько секунд подряд снижается недостаточно.",
+ f:["Ограничение крутящего момента","Ограничение максимальных оборотов","i-stop не глушит двигатель","Ограничено совместное управление двигателем и АКПП"],
+ k:["Клапан сброса давления топлива","Клапан управления всасыванием (ТНВД)","PCM"],
+ st:["Проверить клапан сброса давления топлива. Неисправен: заменить топливную рампу (common rail).","Проверить клапан управления всасыванием. Неисправен: заменить клапан."],
+ v:"Стереть код, запустить двигатель. 10 раз разогнаться до 60 км/ч и замедлиться торможением двигателем, затем считать коды."},
+
+{c:"P0299",s:"00",e:E18,y:"Турбонаддув",src:"DTC P0299-00 PCM SKYACTIV-D.pdf",
+ t:"Недостаточный наддув турбокомпрессора",
+ q:"Ищите утечки: выпуск до турбины, впуск между турбиной и коллектором, вакуумные трубки управления турбиной.",
+ d:"Фактическое давление наддува расходится с целевым больше допуска 7 с подряд (обороты от 1400, подача от 20 мм³/ход). Код сохраняется на втором цикле поездки.",
+ f:["Аварийный режим не предусмотрен, горит Check Engine"],
+ k:["Сигнал датчика MAP: сам датчик, разъём или жгут","Утечка выпускных газов из выпускной системы","Утечка воздуха во впускной системе","Электромагнитный клапан турбокомпрессора","Датчик положения актуатора турбины","Актуатор турбокомпрессора","Турбокомпрессор","PCM"],
+ st:["На M-MDS сравнить PID MAP и MAP_DSD на прогретом двигателе. Пошевелить разъёмы PCM и датчика MAP: если показания скачут, ремонтировать жгут или разъём.","Проверить датчик положения актуатора турбины. Неисправен: проверить его жгут и разъём.","Осмотреть выпускную систему на утечку газов.","Осмотреть впуск между турбокомпрессором и впускным коллектором: ослабленные хомуты, повреждения.","Проверить вакуумные трубки и трубки давления перепускного клапана компрессора.","Проверить электромагнитный клапан турбокомпрессора.","Проверить актуатор турбины.","Проверить сам турбокомпрессор."],
+ v:"Прогреть двигатель. На 2-й передаче разогнаться с 40 до 55 км/ч за 5 с и дольше. Разница MAP_DSD и MAP не должна держаться выше 80 кПа дольше 3 с."},
+
+{c:"P0401",s:"00",e:E18,y:"EGR",src:"DTC P0401-00 PCM SKYACTIV-D.pdf",
+ t:"HP-EGR: недостаточный поток рециркуляции",
+ q:"Чаще всего смотрят клапан HP-EGR (заклинил закрытым) и засор сажей в канале HP-EGR.",
+ d:"Поток HP-EGR ниже целевого на 0,2 г/об и более в течение 8,2 с при 1200–6000 об/мин. Код сохраняется на втором цикле поездки.",
+ f:["Аварийный режим не предусмотрен, горит Check Engine"],
+ k:["Неверный сигнал датчиков: MAF, MAP, температуры наддувочного воздуха, давления выпускных газов №1, температуры выпускных газов №1 (датчик, разъём, жгут)","Впускная заслонка","Клапан HP-EGR заклинил в закрытом положении","Подсос воздуха между турбокомпрессором и впускным коллектором","Засор канала или трубки HP-EGR","PCM"],
+ st:["На M-MDS проверить PID: CHARGE_AIR_COOL_TEMP, EX_PRES, EX_GAS_TEMP_1, MAF, MAP. Если значения не в норме, пошевелить разъёмы датчиков и PCM, отремонтировать проводку.","Проверить впускную заслонку.","Проверить работу клапана HP-EGR.","Осмотреть впуск между турбокомпрессором и коллектором на подсос.","Снять клапан HP-EGR, проверить прокладку и канал. Если клапан забит сажей, осмотреть трубку HP-EGR, очистить или заменить."],
+ v:"Прогреть двигатель. Ехать с постоянной скоростью от 70 км/ч в течение 1 минуты, повторить не меньше двух раз."},
+
+{c:"P0476",s:"00",e:E18,y:"Выпуск",src:"DTC P0476-00 PCM SKYACTIV-D.pdf",
+ t:"Выпускная заслонка: ошибка сигнала управления",
+ q:"Проверьте разъём выпускной заслонки и цепь управления на обрыв, затем саму заслонку и её датчик положения.",
+ d:"Скважность управления выпускной заслонкой 90 % и выше в течение 2 с при работающем двигателе.",
+ f:["Ограничение крутящего момента","Запрет регенерации сажевого фильтра","Запрет управления EGR"],
+ k:["Разъём или клеммы выпускной заслонки","Разъём или клеммы PCM","Обрыв в цепи управления заслонкой","Выпускная заслонка","Датчик положения выпускной заслонки","PCM"],
+ st:["Осмотреть разъём и клеммы выпускной заслонки.","Осмотреть разъём и клеммы PCM.","Прозвонить цепь управления заслонкой на обрыв.","Проверить датчик положения выпускной заслонки. Неисправен: проверить саму заслонку."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P049B",s:"00",e:E18,y:"EGR",src:"DTC P049B-00 PCM SKYACTIV-D.pdf",
+ t:"LP-EGR: недостаточный поток рециркуляции",
+ q:"Проверьте клапан LP-EGR (заклинил закрытым), охладитель EGR и каналы EGR на засор сажей.",
+ d:"Поток LP-EGR ниже нормы на 0,30 г/об в течение 8,2 с при 1300–6000 об/мин.",
+ f:["Аварийный режим не предусмотрен, горит Check Engine"],
+ k:["Неверный сигнал датчиков: MAF, MAP, температуры наддувочного воздуха, давления и температуры выпускных газов №1 (датчик, разъём, цепь)","Неисправность системы HP-EGR","Выпускная заслонка или её датчик положения","Клапан LP-EGR заклинил закрытым, датчик положения клапана LP-EGR","Засорён охладитель EGR","Нейтрализатор или сажевый фильтр деформирован, повреждён","Утечка выпускных газов из системы LP-EGR","Сужение канала LP-EGR","Подсос воздуха между турбокомпрессором и впускным коллектором","PCM"],
+ st:["На M-MDS проверить PID: EX_PRES, EX_GAS_TEMP_1, CHARGE_AIR_COOL_TEMP, MAF, MAP. Если сигнал далёк от нормы, пошевелить разъёмы датчиков и PCM, отремонтировать разъём.","Проверить датчик положения выпускной заслонки. Неисправен: проверить заслонку.","Проверить работу клапана LP-EGR.","Проверить датчик положения клапана LP-EGR.","Проверить подсос воздуха вокруг соединения турбокомпрессора и впускного коллектора.","Снять клапан HP-EGR, осмотреть канал и прокладку. Сажа: осмотреть трубку HP-EGR, очистить или заменить.","Проверить охладитель EGR на засор.","Осмотреть систему LP-EGR на утечку выпускных газов.","Снять клапан LP-EGR, осмотреть канал и прокладку. Сажа: осмотреть трубку LP-EGR, очистить или заменить."],
+ v:"Полностью прогреть двигатель. Ехать 1 минуту со скоростью от 100 км/ч, повторить два раза."},
+
+{c:"P055F",s:"00",e:E18,y:"Смазка",src:"DTC P055F_00 PCM SKYACTIV-D.pdf",
+ t:"Низкое давление моторного масла",
+ q:"Сначала утечки и уровень масла, потом датчик давления и его проводка, в конце сетка маслоприёмника и насос.",
+ d:"После пуска давление масла ниже порога: до 2300 об/мин — 70 кПа; 2300–3500 об/мин — от 70 до 172,5 кПа; 3500–5500 об/мин — от 172,5 до 182,5 кПа.",
+ f:["Ограничение крутящего момента","Ограничение максимальных оборотов","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления EGR"],
+ k:["Утечка моторного масла","Недостаточный уровень масла","Разъём датчика температуры и давления масла","Замыкание на массу в цепи питания или сигнала датчика давления масла","Разъём PCM","Обрыв цепи питания датчика давления масла","Датчик давления масла","Масляный насос","Засорена сетка маслоприёмника","PCM"],
+ st:["Запустить двигатель, осмотреть масляные магистрали на утечки. Есть утечка: устранить, долить оригинальное масло.","Проверить уровень масла, при необходимости долить.","Осмотреть разъём датчика температуры и давления масла.","Осмотреть разъём PCM.","Прозвонить цепь питания и сигнальную цепь датчика на замыкание на массу.","Прозвонить цепь питания датчика на обрыв.","Проверить датчик давления масла. Неисправен: заменить датчик температуры и давления масла.","Проверить сетку маслоприёмника. Засорена: заменить сетку. Чистая: заменить масляный насос."],
+ v:"Стереть код, запустить двигатель и проехать в условиях из стоп-кадра."},
+
+{c:"P055F",s:"00",e:E15,y:"Смазка",src:"DTC P055F-00 SKYACTIV-D 1.5.pdf",
+ t:"Низкое давление моторного масла",
+ q:"Сначала утечки и уровень масла, потом датчик давления и его проводка, в конце сетка маслоприёмника и насос.",
+ d:"После пуска давление масла ниже порога: до 2300 об/мин — 70 кПа; 2300–2500 об/мин — 70–90 кПа; 2500–3500 об/мин — 90–172,5 кПа; 3500–5500 об/мин — 172,5–182,5 кПа.",
+ f:["Ограничение крутящего момента"],
+ k:["Утечка моторного масла","Неверный уровень масла","Разъём датчика температуры и давления масла","Замыкание на массу: датчик выв. A — PCM 1BT, датчик выв. D — PCM 1AB","Разъём PCM","Обрыв: датчик выв. A — PCM 1BT","Датчик давления масла","Засорена сетка маслоприёмника","Масляный насос","PCM"],
+ st:["Запустить двигатель, осмотреть масляные магистрали на утечки. Есть утечка: устранить, долить оригинальное масло.","Проверить уровень масла, при необходимости долить.","Отключить и осмотреть разъём датчика температуры и давления масла (коррозия, погнутые контакты).","Прозвонить выводы A и D разъёма датчика на массу кузова. Есть проводимость: отключить PCM, найти замыкание в жгуте и отремонтировать. Жгут исправен: заменить PCM (внутреннее замыкание).","Отключить и осмотреть разъём PCM.","Прозвонить провод от вывода A датчика до вывода 1BT PCM. Нет проводимости: устранить обрыв.","Проверить датчик давления масла. Неисправен: заменить датчик температуры и давления масла.","Проверить сетку маслоприёмника. Засорена: заменить сетку. Чистая: заменить масляный насос."],
+ v:"Стереть код, полностью прогреть двигатель и проехать в условиях из стоп-кадра."},
+
+{c:"P0698",s:"00",e:E15,y:"Электрика и питание",src:"DTC P0698-00 SKYACTIV-D 1.5.pdf",
+ t:"Низкое напряжение опорного питания 5 В датчиков",
+ q:"Ищите замыкание на массу в питании 5 В: датчик давления топлива, клапан HP-EGR, клапан LP-EGR и их проводка.",
+ d:"Напряжение на выводе опорного питания 5 В не выше 2,45 В в течение 1 с (напряжение АКБ от 8 В).",
+ f:["Ограничение крутящего момента","Запрет управления EGR","Впускная заслонка полностью открыта","i-stop не глушит двигатель"],
+ k:["Разъём датчика давления топлива","Разъём клапана HP-EGR","Разъём клапана LP-EGR","Замыкание на массу: клапан HP-EGR выв. B — PCM 1BE","Замыкание на массу: датчик давления топлива выв. A — PCM 1AF","Замыкание на массу: клапан LP-EGR выв. C — PCM 1AP","Разъём PCM","PCM"],
+ st:["Выключить зажигание, отключить и осмотреть разъём датчика давления топлива.","Отключить и осмотреть разъём клапана HP-EGR.","Отключить и осмотреть разъём клапана LP-EGR.","При отключённых трёх разъёмах прозвонить на массу кузова: HP-EGR выв. B, датчик давления топлива выв. A, LP-EGR выв. C. Есть проводимость: отключить PCM, найти замыкание в жгуте и отремонтировать. Жгут исправен: заменить PCM (внутреннее замыкание).","Отключить и осмотреть разъём PCM."],
+ v:"Стереть код через M-MDS и считать коды заново."},
+
+{c:"P06DE",s:"00",e:E18,y:"Смазка",src:"DTC P06DE_00 PCM SKYACTIV-D.pdf",
+ t:"Давление масла в режиме высокого давления слишком низкое",
+ q:"Утечки и уровень масла, предохранитель F12 15 A, электромагнитный клапан масла и датчик давления, затем сетка маслоприёмника и насос.",
+ d:"При включённом режиме высокого давления (работает электромагнитный клапан масла) давление не выше 200 кПа в течение 5 с. Температура масла от 20 °C.",
+ f:["Ограничение крутящего момента"],
+ k:["Утечка моторного масла","Неверный уровень масла","Разъём электромагнитного клапана масла","Разъём датчика температуры и давления масла","Замыкание на массу или обрыв в цепи питания клапана масла","Предохранитель F12 15 A","Замыкание на массу или обрыв в цепи управления клапаном масла","Замыкание на массу в цепи питания или сигнала датчика давления масла","Разъём PCM","Обрыв цепи питания датчика давления масла","Электромагнитный клапан масла","Датчик давления масла","Засорена сетка маслоприёмника","Масляный насос","PCM"],
+ st:["Запустить двигатель, осмотреть масляные магистрали на утечки. Есть утечка: устранить, долить оригинальное масло.","Проверить уровень масла, при необходимости долить.","Осмотреть разъём электромагнитного клапана масла.","Осмотреть разъём датчика температуры и давления масла.","Проверить предохранитель F12 15 A, при необходимости заменить.","Прозвонить цепь питания клапана масла на замыкание на массу и обрыв.","Прозвонить цепь управления клапаном масла на замыкание на массу и обрыв.","Прозвонить цепи питания клапана и датчика давления масла на замыкание на массу.","Осмотреть разъём PCM.","Прозвонить цепь питания датчика давления масла на обрыв.","Проверить электромагнитный клапан масла. Неисправен: заменить.","Проверить датчик давления масла. Неисправен: заменить датчик температуры и давления масла.","Проверить сетку маслоприёмника. Засорена: устранить. Чистая: заменить масляный насос."],
+ v:"Стереть код, полностью прогреть двигатель и проехать в условиях из стоп-кадра."},
+
+{c:"P0A06",s:"00",e:E18,y:"Охлаждение",src:"DTC P0A06-00 PCM SKYACTIV-D.pdf",
+ t:"Электрический водяной насос: низкий сигнал в цепи управления",
+ q:"Проверьте предохранитель F12 15 A, разъём и питание электропомпы. Если проводка цела, меняют электропомпу.",
+ d:"Напряжение в цепи управления электропомпой ниже нормы суммарно 5 с и дольше (АКБ 11–16 В, скважность управления 0–85 %).",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Разъём электрического водяного насоса","Замыкание на массу или обрыв в цепи питания насоса","Предохранитель F12 15 A","Разъём PCM","Замыкание на массу или обрыв в цепи управления насосом","Электрический водяной насос","PCM"],
+ st:["Осмотреть разъём электропомпы.","Проверить предохранитель F12 15 A, при необходимости заменить.","Прозвонить цепь питания электропомпы на замыкание на массу и обрыв.","Осмотреть разъём PCM.","Прозвонить цепь управления электропомпой на замыкание на массу и обрыв. Цепь неисправна: отремонтировать. Цепь исправна: заменить электропомпу."],
+ v:"Стереть код, выполнить самотест KOEO."},
+
+{c:"P0A8D",s:"00",e:E18,y:"Электрика и питание",src:"DTC P0A8D_00 PCM SKYACTIV-D.pdf",
+ t:"Низкое напряжение системы электропитания",
+ q:"В первую очередь проверьте аккумулятор, затем предохранители F55 50 A и GLOW/DCDC 80 A и питание DC-DC преобразователя.",
+ d:"Напряжение АКБ не выше 7,25 В при перезапуске после i-stop, либо на DC-DC преобразователе не выше 6 В, либо на PCM не выше 6,2 В при пуске, либо внутреннее сопротивление АКБ выше нормы.",
+ f:["i-stop не глушит двигатель","Мигает жёлтый индикатор i-stop, горит главный предупреждающий индикатор","Двигатель может не запуститься или заглохнуть"],
+ k:["Аккумулятор изношен или неисправен","Разъёмы и клеммы: АКБ, датчик тока, PCM, DC-DC преобразователь","Предохранитель GLOW/DCDC 80 A","Предохранитель F55 50 A","Замыкание на массу или обрыв в цепи питания DC-DC преобразователя","Датчик тока","DC-DC преобразователь","PCM"],
+ st:["Если есть код P058A:00 (датчик тока) или другие коды, сначала устранить их.","Проверить аккумулятор. Неисправен: заменить.","Осмотреть клеммы и разъёмы АКБ, датчика тока, PCM и DC-DC преобразователя.","Проверить предохранитель F55 50 A.","Проверить предохранитель GLOW/DCDC 80 A.","Прозвонить цепь питания DC-DC преобразователя на обрыв и замыкание на массу."],
+ v:"Стереть код, запустить двигатель и выполнить инициализацию состояния аккумулятора (настройка i-stop)."},
+
+{c:"P0C73",s:"00",e:E18,y:"Охлаждение",src:"DTC P0C73_00 PCM SKYACTIV-D.pdf",
+ t:"Электрический водяной насос: внутренняя неисправность",
+ q:"Проверьте электрический водяной насос, при неисправности замените.",
+ d:"На выводе 1CP PCM около 6,0 В и выше в течение 1 с (скважность управления насосом 10–20 %, через 3–6 с после выхода на 700 об/мин).",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Внутренняя цепь электрического водяного насоса","Внутренняя цепь PCM"],
+ st:["Проверить электрический водяной насос. Неисправен: заменить."],
+ v:"Стереть код, выполнить самотест KOEO."},
+
+{c:"P111A",s:"00",e:E18,y:"Охлаждение",src:"DTC P111A-00 PCM SKYACTIV-D.pdf",
+ t:"Высокая температура охлаждающей жидкости",
+ q:"Выясните, был ли долгий режим высоких оборотов. Если перегрев при обычной езде, диагностируйте систему охлаждения и датчик ECT.",
+ d:"Температура охлаждающей жидкости 110 °C и выше держится 2,5 с и дольше.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Неисправность системы охлаждения","Долгая непрерывная работа на высоких оборотах","Датчик температуры охлаждающей жидкости (ECT)","PCM"],
+ st:["Расспросить владельца: была ли долгая езда на высоких оборотах.","Если была: на M-MDS смотреть PID ECT при езде по ровной дороге. Температура остаётся в норме: автомобиль исправен. Доходит до 110 °C: диагностика по разделу «Перегрев системы охлаждения».","Если не было: проверить датчик ECT. Неисправен: заменить."],
+ v:"Стереть код, прогреть двигатель и проехать."},
+
+{c:"P1140",s:"00",e:E18,y:"Топливная система",src:"DTC P1140-00 PCM SKYACTIV-D.pdf",
+ t:"Вода в топливном фильтре",
+ q:"Слейте воду из топливного фильтра и сотрите код. Если код остался, проверяйте датчик воды и его проводку.",
+ d:"В топливном фильтре накопилось воды больше нормы (датчик воды в отстойнике замкнут).",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Вода в топливном фильтре","Разъём датчика воды в отстойнике","Замыкание на массу в сигнальной цепи датчика","Разъём PCM","Датчик воды в отстойнике","PCM"],
+ st:["Слить воду из топливного фильтра, стереть код, выполнить самотест KOEO или KOER. Код не вернулся: ремонт завершён.","Осмотреть разъём датчика воды.","Прозвонить сигнальную цепь датчика на замыкание на массу.","Осмотреть разъём PCM.","Проверить датчик воды. Неисправен: заменить топливный фильтр."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P1142",s:"00",e:E18,y:"Турбонаддув",src:"DTC P1142_00 PCM SKYACTIV-D.pdf",
+ t:"Сработало ограничение подачи топлива для защиты турбины",
+ q:"Проверьте на M-MDS, слушается ли актуатор турбины. Если нет, ищите утечку вакуума: трубки, вакуумная камера в клапанной крышке, электромагнитный клапан.",
+ d:"PCM урезал подачу топлива: давление выпускных газов (датчик №1) выше порога, либо турбина вышла на превышение оборотов или перенаддув. Код фиксирует сам факт ограничения.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Вакуумные трубки: усилитель тормозов — вакуумный насос — обратный клапан — вакуумная камера — электромагнитный клапан — актуатор турбины","Вакуумная камера (встроена в клапанную крышку)","Электромагнитный клапан турбокомпрессора","Обратный клапан","Турбокомпрессор с изменяемой геометрией","Датчик положения актуатора","Датчик MAP","Датчик давления выпускных газов №1","Топливные форсунки №1–4","PCM"],
+ st:["Если вместе с ним сохранены P2104, P2106 или P2263, продолжать по этой инструкции. Если есть другие коды, сначала устранить их.","На M-MDS менять TURBO_POS_DSD и смотреть TURBO_POS_ACT. Актуатор следует за командой: перейти к шагу с регенерацией.","Проверить вакуумные трубки на утечки и повреждения.","Проверить вакуумную камеру. Неисправна: заменить клапанную крышку.","Проверить электромагнитный клапан турбокомпрессора. Неисправен: заменить.","Проверить обратный клапан. Неисправен: заменить. Исправен: заменить турбокомпрессор.","После ремонта повторить тест актуатора. Не слушается: заменить турбокомпрессор.","Проверить датчик MAP.","Проверить датчик давления выпускных газов №1.","Проверить топливные форсунки.","Выполнить принудительную регенерацию сажевого фильтра, чтобы выжечь масло в фильтре.","Проверить уровень масла. Выше метки X: заменить масло и сбросить данные о масле."],
+ v:"Выполнить коррекцию количества впрыска форсунок, прогреть двигатель и проехать в условиях из стоп-кадра.",
+ n:"Если сохранён P242F:00, принудительная регенерация будет заблокирована."},
+
+{c:"P1200",s:"00",e:E18,y:"Топливная система",src:"DTC P1200-00 PCM SKYACTIV-D.pdf",
+ t:"Обучение количества впрыска завершилось с ошибкой",
+ q:"Проверьте контакт в диагностическом разъёме DLC-2 и форсунки, затем повторите обучение количества впрыска.",
+ d:"Обучение количества впрыска топлива не завершилось нормально.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Во время обучения пропадал контакт между DLC-2 и M-MDS","Топливная форсунка","Механика двигателя: низкая компрессия","PCM"],
+ st:["Осмотреть разъём DLC-2 и его клеммы.","Проверить топливные форсунки. Неисправна: заменить.","Выполнить обучение количества впрыска (коррекция форсунок), запустить двигатель. Индикатор не погас: проверить условия обучения и повторить.","Стереть код, выполнить самотест. Код вернулся: сменить способ обучения (с M-MDS или без него) и повторить."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P1260",s:"00",e:E18,y:"Иммобилайзер",src:"DTC P1260-00 PCM SKYACTIV-D.pdf",
+ t:"Неисправность системы иммобилайзера",
+ q:"Считайте коды блока управления LF (иммобилайзер) и устраняйте неисправность по ним.",
+ d:"Блок start-stop обнаружил неисправность в системе иммобилайзера.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Система иммобилайзера","PCM"],
+ st:["Считать коды блока управления LF. Есть коды: устранять по ним."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P1329",s:"00",e:E18,y:"Топливная система",src:"DTC P1329-00 PCM SKYACTIV-D.pdf",
+ t:"Давление в топливной рампе выше требуемого",
+ q:"Проверьте клапан сброса давления, датчики давления топлива, клапан управления всасыванием, ТНВД и топливный фильтр.",
+ d:"Давление в рампе выше 250 МПа или выше расчётного в течение 1 с, либо выше 217 МПа или выше расчётного в течение 60 с.",
+ f:["Ограничение давления топлива","Ограничение крутящего момента и максимальных оборотов","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления EGR","i-stop не глушит двигатель"],
+ k:["Засорён топливный фильтр","Клапан сброса давления топлива","Разъёмы датчиков давления топлива (встроены в форсунки №2 и №3)","Клапан управления всасыванием","Топливная трубка пережата или повреждена","ТНВД","PCM"],
+ st:["Проверить клапан сброса давления топлива. Неисправен: заменить топливную рампу.","Проверить датчик давления топлива.","Проверить клапан управления всасыванием. Неисправен: заменить.","Проверить ТНВД.","Проверить топливный фильтр на засор."],
+ v:"Стереть код, прогреть двигатель и проехать в условиях из стоп-кадра.",
+ n:"Не касайтесь клемм форсунок руками и инструментом и не подносите к форсункам высоковольтные и электронные устройства: форсунку можно повредить."},
+
+{c:"P1336",s:"00",e:E15,y:"ГРМ",src:"DTC P1336_00 SKYACTIV-D 1.5.pdf",
+ t:"Рассогласование датчиков CKP и CMP: растяжение цепи ГРМ",
+ q:"Проверьте датчики CKP и CMP и их задающие диски. Если они исправны и фазы не сбиты, меняют цепь ГРМ.",
+ d:"Разность фаз между датчиками коленвала (CKP) и распредвала (CMP) выше порога: PCM считает, что цепь ГРМ растянута. Check Engine при этом не горит.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Датчик CKP: разъём, загрязнение, задающий диск","Датчик CMP: разъём, загрязнение, повреждение зоны считывания","Разъём PCM","Неверно выставлены фазы ГРМ","Растянута цепь ГРМ"],
+ st:["Отключить и осмотреть разъём датчика CKP.","Снять датчик CKP, удалить с него посторонние частицы.","Осмотреть задающий диск CKP. Повреждён или поцарапан: заменить.","Проверить датчик CKP. Неисправен: заменить.","Отключить и осмотреть разъём датчика CMP.","Снять датчик CMP, удалить с него посторонние частицы.","Осмотреть задающий диск CMP. Повреждён: заменить.","Проверить датчик CMP. Неисправен: заменить.","Отключить и осмотреть разъём PCM.","Проверить фазы газораспределения. Сбиты: выставить. В норме: заменить цепь ГРМ, затем выполнить коррекцию количества впрыска форсунок и обучение цепи ГРМ."],
+ v:"Стереть код, запустить двигатель и считать коды."},
+
+{c:"P167B",s:"00",e:E18,y:"Топливная система",src:"DTC P167B-00 PCM SKYACTIV-D.pdf",
+ t:"Обучение количества впрыска не выполнено",
+ q:"Выполните обучение количества впрыска (коррекцию форсунок).",
+ d:"Обучение количества впрыска топлива не завершено.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Обучение количества впрыска не завершено","PCM"],
+ st:["Выполнить обучение количества впрыска (коррекция форсунок), запустить двигатель. Индикатор не погас: проверить условия обучения и повторить.","Стереть код, выполнить самотест. Код вернулся: сменить способ обучения (с M-MDS или без него) и повторить."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P2106",s:"00",e:E18,y:"Турбонаддув",src:"DTC P2106_00 PCM SKYACTIV-D.pdf",
+ t:"Принудительное ограничение мощности: превышено давление наддува или выпуска",
+ q:"Проверьте на M-MDS, слушается ли актуатор турбины. Если нет, ищите утечку вакуума. Если да, проверяйте, не попадает ли масло во впуск.",
+ d:"Давление выпускных газов или наддувочного воздуха превысило заданный порог.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Вакуумные трубки: усилитель тормозов — вакуумный насос — обратный клапан — вакуумная камера — электромагнитный клапан — актуатор турбины","Масло попадает в камеру сгорания","Топливные форсунки №1–4","Турбокомпрессор с изменяемой геометрией","Датчик положения актуатора","Электромагнитный клапан турбокомпрессора","Датчик давления выпускных газов №1","Датчик MAP","Вакуумная камера (встроена в клапанную крышку)","Обратный клапан","PCM"],
+ st:["Если вместе с ним сохранены P1142, P2104 или P2263, продолжать по этой инструкции. Если есть другие коды, сначала устранить их.","На M-MDS менять TURBO_POS_DSD и смотреть TURBO_POS_ACT. Актуатор следует за командой: перейти к шагу с регенерацией.","Проверить вакуумную камеру. Неисправна: заменить клапанную крышку.","Проверить вакуумные трубки на утечки и повреждения.","Проверить электромагнитный клапан турбокомпрессора. Неисправен: заменить.","Проверить обратный клапан. Неисправен: заменить. Исправен: заменить турбокомпрессор.","После ремонта повторить тест актуатора. Не слушается: заменить турбокомпрессор.","Слить масло и проверить на металлическую стружку. Есть стружка: ремонт или замена двигателя.","Выкрутить свечи накаливания, накрыть отверстия тканью, прокрутить двигатель и удалить масло из цилиндров.","Измерить компрессию. Не в норме: ремонт по результатам.","Осмотреть сердцевину водяного интеркулера. Есть масло: продуть сжатым воздухом, очистить или заменить интеркулер. Проверить канал охлаждающей жидкости интеркулера на засор.","Осмотреть дно впускного коллектора. Есть масло: удалить.","Продуть сжатым воздухом впускной канал коллектора, удалить посторонние частицы.","Проверить датчик MAP.","Проверить датчик давления выпускных газов №1.","Выполнить принудительную регенерацию сажевого фильтра, чтобы выжечь масло в фильтре.","Проверить уровень масла. Выше метки X: заменить масло и сбросить данные о масле."],
+ v:"Выполнить коррекцию количества впрыска форсунок, прогреть двигатель и проехать в условиях из стоп-кадра. В конце сбросить данные сажевого фильтра.",
+ n:"Если сохранён P242F:00, принудительная регенерация будет заблокирована."},
+
+{c:"P2118",s:"00",e:E18,y:"Впуск",src:"DTC P2118-00 PCM SKYACTIV-D.pdf",
+ t:"Впускная заслонка: ошибка сигнала управления",
+ q:"Проверьте, не заедает ли впускная заслонка (нагар, лёд, посторонние предметы), её разъём и цепь управления.",
+ d:"Скважность управления приводом впускной заслонки 90 % и выше в течение 2 с.",
+ f:["Ограничение крутящего момента","Ограничение максимальных оборотов","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления EGR","i-stop не глушит двигатель"],
+ k:["Разъём впускной заслонки","Обрыв в цепи управления заслонкой","Разъём PCM","Впускная заслонка: заедает, примёрзла, попали посторонние предметы","Датчик положения впускной заслонки","PCM"],
+ st:["Осмотреть разъём впускной заслонки.","Осмотреть разъём PCM.","Прозвонить цепь управления заслонкой на обрыв.","Проверить впускную заслонку. Неисправна: заменить.","Снять заслонку и осмотреть. Есть посторонние предметы или отложения: удалить.","Проверить датчик положения впускной заслонки."],
+ v:"Стереть код. Пять раз подряд: холостой ход 20 с; на 2-й передаче 35 км/ч 25 с; остановка и холостой ход 20 с; на 3-й передаче 50 км/ч 50 с; остановка и холостой ход 20 с."},
+
+{c:"P2138",s:"00",e:E18,y:"Датчики",src:"DTC P2138_00 PCM SKYACTIV-D.pdf",
+ t:"Датчики положения педали газа №1 и №2 не согласованы",
+ q:"Проверьте разъём педали газа и замыкание между сигнальными проводами датчиков, затем сам датчик педали.",
+ d:"Разница выходных напряжений датчиков APP №1 и №2 составляет 0,7 В и больше в течение 1 с.",
+ f:["Ограничение максимальных оборотов","Запрет регенерации сажевого фильтра","Запрет DeNOx/DeSOx","Запрет управления EGR","i-stop не глушит двигатель"],
+ k:["Разъём датчика педали газа (APP)","Разъём PCM","Замыкание между сигнальными цепями датчиков №1 и №2","Датчик APP №1","Датчик APP №2","PCM","Педаль газа установлена неправильно"],
+ st:["Осмотреть разъём датчика педали газа.","Осмотреть разъём PCM.","Прозвонить сигнальные цепи датчиков №1 и №2 на замыкание между собой.","Проверить датчики APP. Неисправны: заменить датчик положения педали газа."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P213B",s:"00",e:E18,y:"EGR",src:"DTC P213B-00 PCM SKYACTIV-D.pdf",
+ t:"Клапан LP-EGR: неисправность цепи управления приводом",
+ q:"Проверьте разъём клапана LP-EGR и цепь управления на замыкание на плюс и на массу, затем сам клапан.",
+ d:"Скважность управления клапаном LP-EGR 90 % и выше в течение 2 с при управлении с обратной связью.",
+ f:["Ограничение крутящего момента","Ограничение максимальных оборотов","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления EGR","i-stop не глушит двигатель"],
+ k:["Разъём клапана LP-EGR","Разъём PCM","Замыкание на плюс в цепи управления клапаном","Замыкание на массу в цепи управления клапаном","Клапан LP-EGR","PCM"],
+ st:["Осмотреть разъём клапана LP-EGR.","Осмотреть разъём PCM.","Прозвонить цепь управления клапаном на замыкание на плюс.","Прозвонить цепь управления клапаном на замыкание на массу.","Проверить клапан LP-EGR. Неисправен: заменить."],
+ v:"Стереть код, выполнить самотест KOEO."},
+
+{c:"P2263",s:"00",e:E18,y:"Турбонаддув",src:"DTC P2263_00 PCM SKYACTIV-D.pdf",
+ t:"Управление турбиной: положение актуатора не соответствует заданному",
+ q:"Проверьте вакуумные трубки управления турбиной, вакуумную камеру, электромагнитный клапан и обратный клапан.",
+ d:"Заданное и фактическое положение актуатора турбины расходятся на 2 мм и более (при скважности клапана от 55 %) или на −6,2 мм и более (при скважности до 20 %) в течение 3 с. Обороты выше 700, клапан HP-EGR закрыт, регенерация не идёт.",
+ f:["Ограничение крутящего момента","Ограничение максимальных оборотов","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления наддувом","Запрет управления EGR","Ограничено совместное управление двигателем и АКПП"],
+ k:["Вакуумные трубки: усилитель тормозов — вакуумный насос — обратный клапан — вакуумная камера — электромагнитный клапан — актуатор турбины","Вакуумная камера (встроена в клапанную крышку)","Электромагнитный клапан турбокомпрессора","Обратный клапан","Датчик положения актуатора турбины","Турбокомпрессор с изменяемой геометрией","PCM"],
+ st:["Проверить вакуумные трубки на утечки и повреждения.","Проверить вакуумную камеру.","Проверить электромагнитный клапан турбокомпрессора. Неисправен: заменить.","Проверить обратный клапан. Неисправен: заменить.","Проверить датчик положения актуатора турбины.","Проверить турбокомпрессор."],
+ v:"Стереть код, полностью прогреть двигатель и ехать 1 минуту со скоростью 35–50 км/ч."},
+
+{c:"P242F",s:"00",e:E18,y:"Сажевый фильтр",src:"DTC P242F-00 PCM SKYACTIV-D.pdf",
+ t:"Сажевый фильтр: сажи больше допустимого",
+ q:"Проверьте трубки датчика давления выпускных газов №2. Если они целы, по инструкции меняют нейтрализатор с сажевым фильтром.",
+ d:"Расчётное количество сажи в фильтре превысило 17 г/л.",
+ f:["Ограничение крутящего момента","Ограничение максимальных оборотов","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления EGR"],
+ k:["Разъём датчика давления выпускных газов №2","Трубка между датчиком давления №2 и нейтрализатором с сажевым фильтром засорена или повреждена","Сажевый фильтр засорён или повреждён","PCM"],
+ st:["Убедиться, что стоп-кадр записан именно по P242F:00. Если нет, сначала диагностировать код из стоп-кадра.","Осмотреть разъём датчика давления выпускных газов №2.","Осмотреть трубки датчика давления №2 на засор и повреждения. Неисправны: отремонтировать или заменить. Исправны: заменить нейтрализатор с сажевым фильтром."],
+ v:"Стереть код, запустить двигатель и проехать в условиях из стоп-кадра.",
+ n:"С этим кодом принудительная регенерация сажевого фильтра заблокирована."},
+
+{c:"P2458",s:"00",e:E18,y:"Сажевый фильтр",src:"DTC P2458-00 PCM SKYACTIV-D.pdf",
+ t:"Сажевый фильтр: накопление сажи среднего уровня",
+ q:"Проверьте трубки датчика давления №2, выполните обучение количества впрыска и принудительную регенерацию.",
+ d:"Расчётное количество сажи в фильтре превысило 10 г/л.",
+ f:["Ограничение крутящего момента","Автоматическая регенерация прервана","Запрет DeNOx/DeSOx"],
+ k:["Трубка между датчиком давления выпускных газов №2 и нейтрализатором с сажевым фильтром засорена или повреждена","Сажевый фильтр засорён или повреждён","PCM"],
+ st:["Если сохранён P242F:00, работать по нему.","Если есть другие коды, кроме P2458 и P2463, сначала устранить их: с ними PCM может ограничить принудительную регенерацию.","Осмотреть трубки датчика давления выпускных газов №2. Неисправны: отремонтировать или заменить.","Трубки исправны: выполнить обучение количества впрыска и принудительную регенерацию сажевого фильтра.","Стереть код и проехать в условиях из стоп-кадра. P2458 вернулся: заменить нейтрализатор с сажевым фильтром."],
+ v:"Стереть код, запустить двигатель и проехать в условиях из стоп-кадра."},
+
+{c:"P2463",s:"00",e:E18,y:"Сажевый фильтр",src:"DTC P2463-00 PCM SKYACTIV-D.pdf",
+ t:"Сажевый фильтр: большое накопление сажи",
+ q:"Проверьте трубки датчика давления №2, выполните обучение количества впрыска и принудительную регенерацию. Если код возвращается, меняют фильтр.",
+ d:"Расчётное количество сажи в фильтре превысило 13 г/л.",
+ f:["Ограничение крутящего момента","Автоматическая регенерация прервана","Запрет DeNOx/DeSOx","Запрет управления EGR"],
+ k:["Трубка между датчиком давления выпускных газов №2 и нейтрализатором с сажевым фильтром засорена или повреждена","Сажевый фильтр засорён или повреждён","PCM"],
+ st:["Осмотреть трубки датчика давления выпускных газов №2 на засор, повреждения и утечки. Неисправны: отремонтировать или заменить.","Трубки исправны: выполнить обучение количества впрыска и принудительную регенерацию сажевого фильтра.","Стереть код и проехать в условиях из стоп-кадра. Код вернулся: заменить нейтрализатор с сажевым фильтром."],
+ v:"Стереть код, запустить двигатель и проехать в условиях из стоп-кадра.",
+ n:"Принудительная регенерация не запустится, пока сохранён любой из кодов: P0093, P0102, P0103, P0107, P0108, P0112, P0113, P0117, P0118, P0201–P0204, P0313, P0337, P0406, P0500, P0545, P0546, P0605, P0606, P115A, P1378, P1379, P2032, P2033, P2146–P2151, P2228, P2229, P242C, P242D, P242F, P2454, P2455, P253F. Сначала устраните их. Если сажи очень много и сохранён P242F или P2463, принудительная регенерация невозможна."},
+
+{c:"P2471",s:"00",e:E18,y:"Датчики",src:"DTC P2471_00 PCM SKYACTIV-D.pdf",
+ t:"Датчик температуры выпускных газов №4: высокий сигнал",
+ q:"Проверьте разъём датчика температуры выпускных газов №4, обрыв сигнального провода или массы и сам датчик.",
+ d:"Напряжение датчика на выводе 1DU PCM выше 4,95 В в течение 6 с (АКБ от 8 В).",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Разъём датчика температуры выпускных газов №4","Разъём PCM","Замыкание сигнальной цепи датчика на плюс","Обрыв сигнальной цепи или цепи массы датчика","Датчик температуры выпускных газов №4","PCM"],
+ st:["Осмотреть разъём датчика температуры выпускных газов №4.","Осмотреть разъём PCM.","Прозвонить сигнальную цепь датчика на замыкание на плюс.","Прозвонить сигнальную цепь и цепь массы датчика на обрыв.","Проверить датчик. Неисправен: заменить."],
+ v:"Стереть код, запустить двигатель, 1 минута холостого хода. PID EXHTEMP4 должен показать −20 °C или выше."},
+
+{c:"P244A",s:"00",e:E15,y:"Сажевый фильтр",src:"Код кода P244A-00 SKYACTIV-D 1.5.pdf",
+ t:"Перепад давления на сажевом фильтре слишком мал",
+ q:"Проверьте утечки выхлопа и трубку датчика давления выпускных газов №2, затем сам датчик. Если всё исправно, причина в сажевом фильтре.",
+ d:"Разница давлений до и после сажевого фильтра ниже нормы 7 с подряд (обороты от 825, сажи в фильтре от 1,5 г/л).",
+ f:["Ограничение крутящего момента","Запрет автоматической регенерации","Запрет принудительной регенерации","Запрет управления EGR","i-stop не глушит двигатель"],
+ k:["Сигнал датчика давления выпускных газов №2: разъём, цепь","Утечка выпускных газов из выпускной системы","Трубка между датчиком №2 и сажевым фильтром повреждена или проложена неправильно","Датчик давления выпускных газов №2","Нейтрализатор или сажевый фильтр деформирован, повреждён","PCM"],
+ st:["Запустить двигатель, на M-MDS проверить PID EXHPRESS_DIF. Не в норме: проверить датчик и его жгут.","Осмотреть выпускную систему на утечку газов.","Осмотреть трубку датчика давления №2: сужения, повреждения, неправильная прокладка.","Проверить датчик давления выпускных газов №2. Неисправен: заменить датчик. Исправен: заменить нейтрализатор с сажевым фильтром."],
+ v:"Стереть код, запустить двигатель и держать 3500 об/мин и выше 1 минуту. EXHPRESS_DIF должен быть 0,2 кПа или больше."},
+
+{c:"P2564",s:"00",e:E18,y:"Турбонаддув",src:"DTC P2564-00 PCM SKYACTIV-D.pdf",
+ t:"Датчик положения актуатора турбины: низкий сигнал",
+ q:"Проверьте разъём датчика положения актуатора турбины и проводку до PCM на замыкание на массу и обрыв.",
+ d:"Выходное напряжение датчика положения актуатора турбины ниже 0,10 В в течение 2,5 с.",
+ f:["Ограничение крутящего момента","Запрет DeNOx/DeSOx","Запрет регенерации сажевого фильтра","Запрет управления наддувом","Запрет управления EGR","Ограничено совместное управление двигателем и АКПП"],
+ k:["Разъём датчика положения актуатора турбины","Разъём PCM","Замыкание на массу в цепи питания или сигнала датчика","Замыкание сигнальной цепи датчика на его цепь массы","Обрыв сигнальной цепи датчика","Датчик положения актуатора турбины","PCM"],
+ st:["Проверить датчик положения актуатора турбины.","Выключить зажигание, отключить и осмотреть разъёмы датчика и PCM.","Прозвонить цепь питания и сигнальную цепь датчика на замыкание на массу.","Прозвонить сигнальную цепь и цепь массы датчика на замыкание между собой.","Прозвонить сигнальную цепь датчика на обрыв.","Датчик неисправен: ремонт или замена (см. снятие турбокомпрессора)."],
+ v:"Стереть код, включить зажигание или оставить двигатель на холостом ходу на 10 с."},
+
+{c:"P2580",s:"00",e:E15,y:"Турбонаддув",src:"DTC P2580-00 SKYACTIV-D 1.5.pdf",
+ t:"Датчик частоты вращения турбины: низкий сигнал",
+ q:"Проверьте разъём датчика частоты вращения турбины и проводку до PCM, затем сам датчик. Если код возвращается, меняют турбокомпрессор.",
+ d:"Напряжение на выводе 1EJ PCM ниже 2,5 В в течение 3,5 с (через 5 с после пуска, обороты от 750).",
+ f:["Запрет управления EGR","Запрет регенерации сажевого фильтра","i-stop не глушит двигатель"],
+ k:["Разъём датчика частоты вращения турбины","Замыкание на массу: датчик выв. D — PCM 1BI, датчик выв. A — PCM 1EJ","Разъём PCM","Замыкание сигнальной цепи датчика на его цепь массы","Обрыв: датчик выв. D — PCM 1BI","Датчик частоты вращения турбины","Турбокомпрессор: колесо турбины или компрессора","PCM"],
+ st:["Выключить зажигание, отключить и осмотреть разъём датчика.","Прозвонить выводы D и A разъёма датчика на массу кузова. Есть проводимость: отключить PCM, найти замыкание в жгуте и отремонтировать. Жгут исправен: заменить PCM (внутреннее замыкание).","Отключить и осмотреть разъём PCM.","При отключённых датчике и PCM прозвонить выводы A и B датчика между собой. Есть проводимость: устранить замыкание в жгуте.","Прозвонить провод от вывода D датчика до вывода 1BI PCM. Нет проводимости: устранить обрыв.","Подключить разъёмы, проверить датчик частоты вращения турбины. Неисправен: заменить."],
+ v:"Стереть код. Дождаться, пока PID EOT опустится ниже 50 °C, запустить двигатель без нажатия на газ, 30 с холостого хода; повторить. Если вернулся P2580 или P2581, заменить турбокомпрессор."},
+
+{c:"P2682",s:"00",e:E15,y:"Охлаждение",src:"DTC P2682-00 SKYACTIV-D 1.5.pdf",
+ t:"Датчик положения клапана управления охлаждающей жидкостью: низкий сигнал",
+ q:"Проверьте разъём клапана управления охлаждающей жидкостью и проводку до PCM. Датчик встроен в клапан, меняется вместе с ним.",
+ d:"Напряжение датчика положения клапана на выводе 1BP PCM ниже 0,66 В в течение 5 с.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Разъём клапана управления охлаждающей жидкостью","Замыкание на массу: клапан выв. F — PCM 1BO, клапан выв. E — PCM 1BP","Разъём PCM","Замыкание сигнальной цепи датчика на его цепь массы","Клапан управления охлаждающей жидкостью","Обрыв: клапан выв. F — PCM 1BO","PCM"],
+ st:["Выключить зажигание, отключить и осмотреть разъём клапана.","Прозвонить выводы F и E разъёма клапана на массу кузова. Есть проводимость: отключить PCM, найти замыкание в жгуте и отремонтировать. Жгут исправен: заменить PCM (внутреннее замыкание).","Отключить и осмотреть разъём PCM.","При отключённых клапане и PCM прозвонить выводы E и D клапана между собой. Есть проводимость: устранить замыкание в жгуте.","Прозвонить провод от вывода F клапана до вывода 1BO PCM. Нет проводимости: устранить обрыв.","Подключить разъёмы, проверить датчик положения клапана. Неисправен: заменить клапан управления охлаждающей жидкостью."],
+ v:"Стереть код, выполнить самотест KOEO или KOER."},
+
+{c:"P26A3",s:"00",e:E15,y:"Охлаждение",src:"DTC P26A3_00 SKYACTIV-D 1.5.pdf",
+ t:"Клапан управления охлаждающей жидкостью: неисправность",
+ q:"Проверьте разъём клапана управления охлаждающей жидкостью и два провода управления до PCM, затем сам клапан.",
+ d:"Скважность управления приводом клапана держится выше порога дольше заданного времени (температура охлаждающей жидкости от −30 до 120 °C).",
+ f:["Ограничение крутящего момента","Запрет управления EGR","Запрет автоматической регенерации","Принудительная регенерация прерывается","i-stop не глушит двигатель"],
+ k:["Разъём клапана управления охлаждающей жидкостью","Разъём PCM","Замыкание на массу, на плюс или обрыв: клапан выв. B — PCM 1BM","Замыкание на массу, на плюс или обрыв: клапан выв. C — PCM 1BR","Клапан управления охлаждающей жидкостью","Датчик положения клапана","PCM"],
+ st:["Выключить зажигание, отключить и осмотреть разъём клапана.","Отключить и осмотреть разъём PCM.","Прозвонить выводы B и C разъёма клапана на массу кузова. Есть проводимость: устранить замыкание на массу.","Включить зажигание, измерить напряжение на выводах B и C разъёма клапана. Не 0 В: устранить замыкание на плюс.","Выключить зажигание, прозвонить провода B — 1BM и C — 1BR. Нет проводимости: устранить обрыв.","Проверить клапан управления охлаждающей жидкостью. Неисправен: заменить.","Проверить датчик положения клапана. Неисправен: заменить клапан."],
+ v:"Стереть код, выполнить самотест KOEO."},
+
+{c:"U2300",s:"00",e:E18,y:"Сеть CAN и блоки",src:"DTC U2300-00 PCM SKYACTIV-D.pdf",
+ t:"Ошибка центральной конфигурации (BCM и PCM)",
+ q:"Считайте коды BCM и проверьте разъёмы BCM и PCM. Часто причина в неверно заданной конфигурации BCM.",
+ d:"PCM не получает конфигурацию от блока кузова (BCM) по CAN, либо она неизвестна, недействительна или не совпадает с записанной в PCM (в течение 10 с).",
+ f:["PCM работает по ранее запомненной конфигурации"],
+ k:["Ошибка CAN-драйвера в BCM или PCM","Конфигурация BCM задана неправильно","Линия CAN между BCM и PCM","Разъём BCM","Разъём PCM","BCM установлен неправильно","BCM","Ошибка энергонезависимой памяти PCM","PCM"],
+ st:["Если сохранён U0140:00, работать по нему.","Считать коды BCM. Есть коды: устранять по ним.","Осмотреть разъём BCM.","Осмотреть разъём PCM.","Проверить правильность установки BCM.","Проверить BCM. Неисправен: ремонт или замена."],
+ v:"Стереть код, запустить двигатель, выполнить самотест KOEO или KOER."},
+
+{c:"U0184",alt:["U0187"],s:"00",e:"Мультимедиа (CMU)",y:"Сеть CAN и блоки",src:"DTC U0184-00-U0187-00 CONNECTIVITY MASTER UNIT.pdf",
+ t:"Нет связи головного устройства с тюнером-усилителем (U0184) или CD/DVD-проигрывателем (U0187)",
+ q:"Измерьте сопротивление между выводами 2I и 2J блока CMU при снятой минусовой клемме: норма около 60 Ом.",
+ d:"Блок CMU 5 с и дольше не получает сигнал по локальной CAN: U0184 — от тюнера-усилителя (TAU), U0187 — от CD/DVD-проигрывателя.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Разъёмы CMU, тюнера-усилителя, CD/DVD-проигрывателя","Замыкание на плюс линии CAN_H: CMU 2I — TAU 2O, CMU 2I — CD выв. G","Замыкание на массу линии CAN_L: CMU 2J — TAU 2Q, CMU 2J — CD выв. H","Замыкание линий CAN_H и CAN_L между собой","Обрыв проводов до разъёма C-36","Питание тюнера-усилителя, обрыв массы TAU (выв. 2W)","Питание CD/DVD-проигрывателя: предохранители MAIN 200 A и ROOM 15 A, вывод Z; обрыв массы (выв. A)","Тюнер-усилитель","CD/DVD-проигрыватель","CMU"],
+ st:["Считать коды. Если есть коды по питанию или DC-DC преобразователю, сначала устранить их.","Измерить напряжение между выводом 2I CMU и массой. Равно напряжению АКБ: замыкание CAN_H на плюс, искать в жгуте.","Измерить напряжение между выводом 2J CMU и массой. 0 В: замыкание CAN_L на массу, искать в жгуте.","Снять минусовую клемму АКБ, измерить сопротивление между 2I и 2J. Около 60 Ом: линия исправна. 0 Ом: линии замкнуты между собой. 120 Ом: обрыв, прозвонить провода до разъёма C-36.","Линия исправна, только U0184: прозвонить массу тюнера-усилителя (выв. 2W). Масса есть: заменить тюнер-усилитель.","Линия исправна, только U0187: прозвонить массу проигрывателя (выв. A) и проверить питание на выводе Z (предохранители MAIN 200 A и ROOM 15 A). Всё в норме: заменить проигрыватель.","Сохранены оба кода: заменить CMU."],
+ v:"Стереть коды CMU, включить зажигание, подождать 12 с и считать коды."},
+
+{c:"U0433",s:"00",e:"DSC",y:"Системы помощи водителю",src:"DTC_U0433_00_ДИНАМИЧЕСКИЙ_КОНТРОЛЬ_УСТОЙЧИВОСТИ_DSC.pdf",
+ t:"Некорректные данные от лазерного датчика",
+ q:"Считайте коды самого лазерного датчика. Если код возвращается, датчик меняют.",
+ d:"Блок DSC не получает корректные данные от лазерного датчика.",
+ f:["Горит жёлтый индикатор SBS/SCBS","Система SCBS отключена"],
+ k:["Лазерный датчик"],
+ st:["Считать коды лазерного датчика через M-MDS. Есть коды: устранять по ним.","Стереть код DSC. Вернулся: заменить лазерный датчик."],
+ v:"Стереть код и считать коды DSC заново."},
+
+{c:"U0442",s:"00",e:"АКПП CW6A-EL",y:"Трансмиссия",src:"DTC U0442-00 CW6A-EL.pdf",
+ t:"Блок АКПП получил некорректные данные от PCM",
+ q:"Считайте коды PCM и устраните их: этот код в блоке АКПП является следствием.",
+ d:"Блок АКПП (TCM) в течение 0,5 с получает недействительный сигнал от PCM по локальной CAN (АКБ от 10 В).",
+ f:["Изменено управление блокировкой гидротрансформатора","Обучение АКПП запрещено","Ручной режим запрещён","5-я и 6-я передачи запрещены","Запрет переключения при нажатой педали газа"],
+ k:["В PCM сохранён код неисправности"],
+ st:["Считать коды PCM через M-MDS. Есть коды: устранять по ним."],
+ v:"Стереть код, полностью прогреть двигатель, проехать в положении D и считать коды."},
+
+{c:"B10E7",s:"11",e:"Блок start-stop",y:"Электрика и питание",src:"DTC B10E7-11 БЛОК СТАРТ-СТОП.pdf",
+ t:"Неисправность цепи реле IG1",
+ q:"Проверьте реле IG1, затем разъём блока start-stop и провод от реле на замыкание на массу.",
+ d:"Блок start-stop видит на контрольном выходе реле IG1 меньше 2,5 В в течение 0,5 с и дольше при включённом зажигании.",
+ f:["Аварийный режим не предусмотрен"],
+ k:["Реле IG1","Разъём блока start-stop","Замыкание на массу: реле IG1 выв. A — блок start-stop выв. 2S","Блок start-stop"],
+ st:["Выключить зажигание, снять минусовую клемму АКБ, снять и проверить реле IG1. Неисправно: заменить.","Отключить и осмотреть разъём блока start-stop.","При снятом реле и отключённом блоке прозвонить вывод A гнезда реле на массу кузова. Есть проводимость: устранить замыкание в жгуте.","Подключить всё, стереть код, включить зажигание и считать коды. Вернулся: заменить блок start-stop."],
+ v:"Стереть код блока start-stop, включить зажигание, подождать 1 с и считать коды."},
+
+{c:"B115E",s:"54",e:"Передняя камера (FSC)",y:"Системы помощи водителю",src:"DTC B115E_54 FORWARD SENSING CAMERA FSC.pdf",
+ t:"Калибровка передней камеры не завершена",
+ q:"Выполните калибровку (наведение) передней камеры FSC и сотрите код.",
+ d:"Блок обнаружил, что наведение передней камеры FSC не завершено.",
+ f:["Отключена система предупреждения о выходе из полосы (LDWS)","Отключено управление дальним светом (HBC)"],
+ k:["Калибровка передней камеры не выполнена","Передняя камера FSC"],
+ st:["Выполнить наведение передней камеры FSC, стереть код и считать коды.","Код вернулся: повторить наведение.","Код вернулся снова: заменить переднюю камеру FSC."],
+ v:"Стереть код камеры и считать коды заново."},
+
+{c:"C1105",s:"62",e:"Модуль V/C",y:"Системы помощи водителю",src:"DTC_C1105_62_МОДУЛЬ_УПРАВЛЕНИЯ_АВТОРОЖНЫМ_СРЕДСТВОМ_МОДУЛЬ_V_C.pdf",
+ t:"Сигнал стоп-сигналов не совпадает с выключателем тормоза",
+ q:"Проверьте выключатель педали тормоза и считайте коды заднего блока кузова (RBCM) и приборной панели.",
+ d:"Модуль управления автомобилем (V/C) видит, что сигнал выключателя тормоза и включение стоп-сигналов не согласованы.",
+ f:["Радарный круиз-контроль MRCC отключён","Система SBS отключена"],
+ k:["Блок стоп-сигналов","Цепь между блоком стоп-сигналов и задним блоком кузова (RBCM), сам RBCM","Выключатель педали тормоза","Сигнал между RBCM и приборной панелью","Сигнал между приборной панелью и модулем V/C","Модуль V/C"],
+ st:["Считать коды RBCM. Есть коды: устранять по ним.","Проверить выключатель педали тормоза. Неисправен: заменить.","Считать коды приборной панели. Есть коды: устранять по ним.","Считать коды модуля V/C. Есть коды: устранять по ним.","Стереть код и проехать. Вернулся: заменить модуль V/C."],
+ v:"Стереть код, проехать 3 минуты и дольше со скоростью от 40 км/ч и считать коды."},
+
+{c:"C1A67",s:"78",e:"Модуль VCM",y:"Системы помощи водителю",src:"DTC_C1A67_78_МОДУЛЬ_УПРАВЛЕНИЯ_АВЕХННЫМ_СРЕДСТВОМ.pdf",
+ t:"Отклонение оптической оси переднего радара",
+ q:"Проверьте крепление переднего радара и выполните его юстировку. Если код возвращается, радар меняют.",
+ d:"Модуль управления автомобилем (VCM) обнаружил в движении, что оптическая ось переднего радара отклонена.",
+ f:["Зависит от комплектации, см. таблицу кодов VCM"],
+ k:["Сбита юстировка переднего радара","Передний радар","Модуль VCM (встроен в блок кузова BCM)"],
+ st:["Считать коды VCM и BCM. Есть код внутренней неисправности: устранять по нему.","Считать коды переднего радара. Есть коды: устранять по ним.","Проверить крепление радара. Ослаблено: установить правильно.","Выполнить юстировку (наведение) переднего радара, стереть код и считать коды. Вернулся: заменить передний радар.","Если код остаётся: проверить шину CAN. Шина исправна и неисправность повторяется: заменить BCM."],
+ v:"Стереть код и считать коды VCM заново."}
+];
+
+</script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const CYR = {"Р":"P","С":"C","В":"B","У":"U","А":"A","Е":"E","О":"0","Д":"D","Ф":"F"};
+const LS_KEY = "mzd-dtc-custom-v1";
+const PRE = "Перед началом: сохраните стоп-кадр и проверьте сервисные бюллетени. Если есть другие коды, сначала устраните их.";
+const TAIL = {
+  "SKYACTIV-D 1.8": "Если после ремонта код возвращается: проверить шину CAN. Шина исправна: повторить диагностику с начала, при повторении заменить PCM.",
+  "SKYACTIV-D 1.5": "Если после ремонта код возвращается: повторить диагностику с начала, при повторении заменить PCM. В конце выполнить «Процедуру после ремонта»."
+};
+
+let custom = [];      // записи из общей базы
+let local = [];       // записи только этого устройства
+let db = null, canShare = false, editing = null, variant = 0, confirmDel = null;
+
+/* ---------- нормализация и поиск ---------- */
+function normCode(s){
+  return String(s || "").toUpperCase().replace(/[А-ЯЁ]/g, c => CYR[c] || c).replace(/[^0-9A-Z]/g, "");
+}
+function parseCode(s){
+  const n = normCode(s);
+  const m = /^([PBCU][0-9A-F]{4})([0-9A-F]{2})?$/.exec(n);
+  return m ? {c: m[1], s: m[2] || ""} : null;
+}
+function all(){ return DATA.concat(custom, local); }
+function keys(e){ return [e.c].concat(e.alt || []); }
+function search(raw){
+  const n = normCode(raw);
+  if (!n) return {mode:"none", items:[]};
+  const list = all();
+  if (/^[PBCU][0-9A-F]{0,6}$/.test(n)){
+    const p = n.slice(0, 5);
+    const hit = list.filter(e => keys(e).some(k => k.startsWith(p)));
+    if (hit.length) return {mode:"code", items:hit, full: p.length === 5 ? p : null};
+  }
+  if (/^[0-9A-F]{2,4}$/.test(n)){
+    const hit = list.filter(e => keys(e).some(k => k.includes(n)));
+    if (hit.length) return {mode:"code", items:hit, full:null};
+  }
+  const words = String(raw).toLowerCase().split(/\s+/).filter(w => w.length > 1);
+  const hit = list.filter(e => {
+    const hay = [e.t, e.q, e.y, e.e, (e.k || []).join(" ")].join(" ").toLowerCase();
+    return words.every(w => hay.includes(w.slice(0, Math.max(3, w.length - 2))));
+  });
+  return {mode:"text", items:hit, full:null};
+}
+
+/* ---------- отрисовка ---------- */
+function codeLabel(e){ return esc(e.c) + (e.s ? "<i>:" + esc(e.s) + "</i>" : ""); }
+function list(tag, arr){ return "<" + tag + ">" + arr.map(x => "<li>" + (tag === "ol" ? "<span>" + esc(x) + "</span>" : esc(x)) + "</li>").join("") + "</" + tag + ">"; }
+
+function card(e){
+  const mine = !!e.id;
+  let h = '<article class="card"><div class="card-top"><div class="code-line"><span class="code">' + codeLabel(e) + "</span>";
+  if (e.alt) h += '<span class="tag">также ' + esc(e.alt.join(", ")) + "</span>";
+  if (e.e) h += '<span class="tag eng">' + esc(e.e) + "</span>";
+  if (e.y) h += '<span class="tag">' + esc(e.y) + "</span>";
+  if (mine) h += '<span class="tag mine">' + (e.local ? "Добавлено на этом устройстве" : "Добавлено участником") + "</span>";
+  h += "</div><h2>" + esc(e.t) + "</h2></div>";
+  if (e.q) h += '<div class="fix"><b>Решение</b>' + esc(e.q) + "</div>";
+  if (e.d) h += '<div class="sec"><h3>Когда появляется</h3><p>' + esc(e.d) + "</p></div>";
+  if (e.f && e.f.length) h += '<div class="sec"><h3>Как ведёт себя автомобиль</h3>' + list("ul", e.f) + "</div>";
+  if (e.k && e.k.length) h += '<div class="sec"><h3>Возможные причины</h3>' + list("ul", e.k) + "</div>";
+  if (e.st && e.st.length){
+    h += '<div class="sec"><h3>Порядок действий</h3>';
+    if (!mine) h += '<p class="pre">' + esc(PRE) + "</p>";
+    h += list("ol", e.st) + "</div>";
+  }
+  if (e.v || TAIL[e.e] && !mine){
+    h += '<div class="sec"><h3>Проверка после ремонта</h3>';
+    if (e.v) h += "<p>" + esc(e.v) + "</p>";
+    if (!mine && TAIL[e.e]) h += '<p class="pre" style="margin:8px 0 0 !important">' + esc(TAIL[e.e]) + "</p>";
+    h += "</div>";
+  }
+  if (e.n) h += '<div class="sec"><div class="note"><b>Важно. </b>' + esc(e.n) + "</div></div>";
+  if (mine){
+    h += '<div class="sec"><div class="acts">';
+    if (confirmDel === e.id){
+      h += '<span>Удалить эту запись?</span><button class="btn danger" data-act="del-yes" data-id="' + esc(e.id) + '">Да, удалить</button><button class="btn" data-act="del-no">Оставить</button>';
+    } else {
+      h += '<button class="btn" data-act="edit" data-id="' + esc(e.id) + '">Изменить</button><button class="btn danger" data-act="del" data-id="' + esc(e.id) + '">Удалить</button>';
+    }
+    h += "</div></div>";
+  } else if (e.src){
+    h += '<div class="sec"><span class="src">Источник: ' + esc(e.src) + "</span></div>";
+  }
+  return h + "</article>";
+}
+
+function rowBtn(e){
+  return '<button class="row" type="button" data-code="' + esc(e.c) + '"><b>' + esc(e.c) + "</b><span>" + esc(e.t) + "</span><em>" + esc(e.e || "") + (e.id ? " · свой" : "") + "</em></button>";
+}
+
+function renderResult(){
+  const raw = $("q").value.trim();
+  $("clear").hidden = !raw;
+  const box = $("result");
+  if (!raw){ box.innerHTML = ""; return; }
+  const r = search(raw);
+  const codes = Array.from(new Set(r.items.map(e => e.c)));
+  if (r.items.length && codes.length === 1){
+    const vs = r.items;
+    if (variant >= vs.length) variant = 0;
+    let h = "";
+    if (vs.length > 1){
+      h += '<div class="variants" role="group" aria-label="Вариант">' + vs.map((e, i) => '<button type="button" data-var="' + i + '" aria-pressed="' + (i === variant) + '">' + esc(e.e || "Вариант " + (i + 1)) + (e.id ? " · свой" : "") + "</button>").join("") + "</div>";
+    }
+    box.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px">' + h + card(vs[variant]) + "</div>";
+    return;
+  }
+  if (r.items.length){
+    box.innerHTML = '<div class="group"><h3>Найдено: ' + r.items.length + '</h3><div class="rows">' + r.items.map(rowBtn).join("") + "</div></div>";
+    return;
+  }
+  const pc = parseCode(raw);
+  box.innerHTML = '<div class="empty"><p><b>' + (pc ? "Кода " + esc(pc.c) + " пока нет в базе." : "Ничего не найдено.") + "</b></p><p>" +
+    (pc ? "Если вы знаете решение, добавьте его, и оно появится в поиске." : "Проверьте написание: код начинается с буквы P, B, C или U, дальше четыре знака.") + "</p>" +
+    (pc ? '<button class="btn primary" type="button" data-act="add-this" data-code="' + esc(pc.c + (pc.s ? ":" + pc.s : "")) + '">Добавить ' + esc(pc.c) + "</button>" : "") + "</div>";
+}
+
+function renderCatalog(){
+  const items = all().slice().sort((a, b) => a.c.localeCompare(b.c));
+  const groups = {};
+  items.forEach(e => { const g = e.y || "Добавлено участниками"; (groups[g] = groups[g] || []).push(e); });
+  const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, "ru"));
+  $("groups").innerHTML = names.map(g => '<div class="group"><h3>' + esc(g) + '</h3><div class="rows">' + groups[g].map(rowBtn).join("") + "</div></div>").join("");
+  const n = new Set(items.map(e => e.c)).size, mine = custom.length + local.length;
+  $("count").textContent = n + " кодов в базе" + (mine ? ", из них добавлено вручную: " + mine : "");
+}
+function render(){ renderResult(); renderCatalog(); }
+
+function show(code){
+  $("q").value = code; variant = 0; confirmDel = null; renderResult();
+  $("result").scrollIntoView({block:"nearest", behavior:"smooth"});
+  try { history.replaceState(null, "", "#" + code); } catch(e){}
+}
+
+/* ---------- хранение своих кодов ---------- */
+function loadLocal(){
+  try { local = (JSON.parse(localStorage.getItem(LS_KEY) || "[]") || []).map(e => Object.assign({}, e, {local:true})); } catch(e){ local = []; }
+}
+function saveLocal(){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(local)); return true; } catch(e){ return false; }
+}
+function clean(d, id){
+  const pc = parseCode(d.c + (d.s || ""));
+  if (!pc || typeof d.t !== "string") return null;
+  const arr = a => Array.isArray(a) ? a.filter(x => typeof x === "string").slice(0, 60) : [];
+  return {id:id, c:pc.c, s:pc.s, e:String(d.e || ""), t:d.t, q:String(d.q || ""), k:arr(d.k), st:arr(d.st), n:String(d.n || ""), y:""};
+}
+async function connect(){
+  let useFn = window.claude && window.claude.use;
+  if (!useFn) return;
+  try {
+    const [d, u] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if (!d) return;
+    db = d;
+    let can = null;
+    try { can = u ? await u.can("data.write") : null; } catch(e){}
+    canShare = can !== false;
+    db.collection("codes").onSnapshot(snap => {
+      custom = snap.docs.map(x => clean(x.data() || {}, x.id)).filter(Boolean);
+      render();
+    }, () => {});
+    whereText();
+  } catch(e){}
+}
+function whereText(){
+  $("f-where").textContent = canShare
+    ? "Запись сохранится в общей базе и будет видна всем, у кого открыт справочник."
+    : "Запись сохранится только в этом браузере на этом устройстве. Чтобы код появился у всех, пришлите его администратору группы.";
+}
+
+/* ---------- форма ---------- */
+function openForm(e, code){
+  editing = e || null;
+  $("form-title").textContent = e ? "Изменить " + e.c : "Новый код";
+  $("f-code").value = e ? e.c + (e.s ? ":" + e.s : "") : (code || "");
+  $("f-eng").value = e ? e.e : "";
+  $("f-title").value = e ? e.t : "";
+  $("f-fix").value = e ? e.q : "";
+  $("f-causes").value = e ? e.k.join("\n") : "";
+  $("f-steps").value = e ? e.st.join("\n") : "";
+  $("f-note").value = e ? e.n : "";
+  $("f-err").hidden = true;
+  whereText();
+  $("formbox").hidden = false;
+  $("formbox").scrollIntoView({block:"start", behavior:"smooth"});
+  (code || e ? $("f-title") : $("f-code")).focus({preventScroll:true});
+}
+function closeForm(){ $("formbox").hidden = true; editing = null; }
+function lines(v){ return v.split("\n").map(s => s.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim()).filter(Boolean); }
+
+async function submit(ev){
+  ev.preventDefault();
+  const err = m => { $("f-err").textContent = m; $("f-err").hidden = false; };
+  const pc = parseCode($("f-code").value);
+  if (!pc) return err("Код должен выглядеть как P0420 или P0420:00: буква P, B, C или U и четыре знака (цифры и буквы A–F).");
+  const t = $("f-title").value.trim();
+  if (!t) return err("Напишите, что означает код.");
+  const q = $("f-fix").value.trim(), st = lines($("f-steps").value);
+  if (!q && !st.length) return err("Добавьте решение: коротко или по шагам.");
+  const rec = {c:pc.c, s:pc.s, e:$("f-eng").value.trim(), t:t, q:q, k:lines($("f-causes").value), st:st, n:$("f-note").value.trim(), at:Date.now()};
+  const btn = $("f-save"); btn.disabled = true;
+  try {
+    const toLocal = editing ? !!editing.local : !canShare;
+    if (toLocal){
+      const id = editing ? editing.id : "l" + Date.now().toString(36);
+      local = local.filter(x => x.id !== id).concat([Object.assign({id:id, local:true, y:""}, rec)]);
+      if (!saveLocal()) { btn.disabled = false; return err("Браузер не дал сохранить запись. Проверьте, не включён ли приватный режим."); }
+    } else {
+      const ref = editing ? db.collection("codes").doc(editing.id) : db.collection("codes").doc(pc.c + "-" + Date.now().toString(36));
+      await ref.set(rec);
+    }
+    closeForm(); show(pc.c); renderCatalog();
+  } catch(e){
+    const code = e && e.code;
+    if (code === "invalid_argument" || code === "not_granted" || code === "revoked"){ canShare = false; whereText(); err("Общая база для вас только для чтения. Нажмите «Сохранить» ещё раз, и запись сохранится в этом браузере."); }
+    else if (code === "quota_exceeded") err("База заполнена. Удалите ненужные записи и попробуйте снова.");
+    else err("Не получилось сохранить. Попробуйте ещё раз через несколько секунд.");
+  }
+  btn.disabled = false;
+}
+async function remove(id){
+  const e = custom.concat(local).find(x => x.id === id);
+  confirmDel = null;
+  if (!e) return render();
+  if (e.local){ local = local.filter(x => x.id !== id); saveLocal(); render(); return; }
+  try { await db.collection("codes").doc(id).delete(); } catch(err){}
+  render();
+}
+
+/* ---------- события ---------- */
+$("q").addEventListener("input", () => { variant = 0; confirmDel = null; renderResult(); });
+$("clear").addEventListener("click", () => { $("q").value = ""; renderResult(); $("q").focus(); try { history.replaceState(null, "", "#"); } catch(e){} });
+$("add").addEventListener("click", () => openForm(null, ""));
+$("f-cancel").addEventListener("click", closeForm);
+$("form").addEventListener("submit", submit);
+document.addEventListener("click", ev => {
+  const row = ev.target.closest(".row");
+  if (row){ show(row.dataset.code); window.scrollTo({top:0, behavior:"smooth"}); return; }
+  const v = ev.target.closest("[data-var]");
+  if (v){ variant = +v.dataset.var; confirmDel = null; renderResult(); return; }
+  const a = ev.target.closest("[data-act]");
+  if (!a) return;
+  const act = a.dataset.act, id = a.dataset.id;
+  if (act === "add-this") openForm(null, a.dataset.code);
+  else if (act === "edit") openForm(custom.concat(local).find(x => x.id === id));
+  else if (act === "del"){ confirmDel = id; renderResult(); }
+  else if (act === "del-no"){ confirmDel = null; renderResult(); }
+  else if (act === "del-yes") remove(id);
+});
+
+loadLocal();
+whereText();
+const h = normCode(location.hash);
+if (parseCode(h)) $("q").value = parseCode(h).c;
+render();
+connect();
+})();
+</script>
+
+</body>
+</html>
